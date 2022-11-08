@@ -1,0 +1,48 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - "*"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  run-codecov:
+    uses: ./.github/workflows/codecov.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  release:
+    needs: run-codecov
+    if: |
+      always()
+      && (needs.run-codecov.result == 'success'
+          || needs.run-codecov.result == 'skipped')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build report
+        uses: dante-ev/latex-action@latest
+        with:
+          root_file: doc/Automata_HW2_2022-28022_report.tex
+          args: "-xelatex -synctex=1 -interaction=nonstopmode -file-line-error"
+          extra_system_packages: fonts-nanum fonts-nanum-extra
+
+      - name: Create zip archive
+        run: .github/scripts/release.sh
+
+      - name: Upload to github
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "*.zip"
+          fail_on_unmatched_files: true
+          generate_release_notes: true

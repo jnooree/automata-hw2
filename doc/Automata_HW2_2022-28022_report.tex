@@ -1,0 +1,145 @@
+\documentclass[a4paper,10pt]{scrartcl}
+\usepackage[margin=1in]{geometry} % decreases margins
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\parskip}{0pt}
+\RedeclareSectionCommand[beforeskip=0pt]{subsubsection}
+
+\usepackage{enumitem}
+\setlist{noitemsep}
+
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage[mathrm=sym]{unicode-math}
+\usepackage{subcaption}
+\captionsetup[table]{skip=0pt}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+
+\usepackage{amsthm}
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}[section]
+\newtheorem{defin}{Definition}[section]
+
+\usepackage[final]{hyperref} % adds hyper links inside the generated pdf file
+\hypersetup{
+  colorlinks=true,% false: boxed links; true: colored links
+  linkcolor=blue,        % color of internal links
+  citecolor=blue,   % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=blue
+}
+\urlstyle{rm}
+
+\usepackage[dvipsnames]{xcolor}
+\definecolor{stringcolor}{RGB}{233,125,44}
+\colorlet{classcolor}{ForestGreen}
+\colorlet{methodcolor}{MidnightBlue}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{listings}
+
+\makeatletter
+\lstdefinestyle{mystyle}{
+  language=C++,
+  showstringspaces=false,
+  basicstyle=%
+    \ttfamily
+    \lst@ifdisplaystyle\normalsize\fi,
+    keywordstyle=\color{Blue},
+    commentstyle=\color[gray]{0.6},
+    stringstyle=\color{stringcolor},
+    texcl=true,
+    aboveskip=0pt,
+    belowskip=0pt
+}
+\makeatother
+
+\lstset{style=mystyle}
+\lstset{escapeinside={(*@}{@*)}}
+\newtcblisting{codebox}{
+  listing only, listing style=mystyle, colback=black!3!white,
+  before skip balanced=\medskipamount, after skip balanced=\medskipamount,
+  boxrule=0.3mm, left=5pt, right=5pt, top=0pt, bottom=0pt
+}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\algnewcommand{\lIf}[2]{% \lIf{<if>}{<then>}
+  \State \algorithmicif\ #1\ \algorithmicthen\ #2}
+
+\makeatletter
+\@addtoreset{algorithm}{section}% algorithm counter resets every chapter
+\makeatother
+\renewcommand{\thealgorithm}{\thesection.\arabic{algorithm}}
+
+\makeatletter
+\newenvironment{breakablealgorithm}
+{% \begin{breakablealgorithm}
+  \begin{spacing}{1.2}
+    \begin{center}
+      \refstepcounter{algorithm}% New algorithm
+      \hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+      \renewcommand{\caption}[2][\relax]{% Make a new \caption
+        {\raggedright\textbf{\fname@algorithm~\thealgorithm} ##2\par}%
+        \ifx\relax##1\relax % #1 is \relax
+          \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+        \else % #1 is not \relax
+          \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+        \fi
+        \kern2pt\hrule\kern2pt
+      }
+  }{% \end{breakablealgorithm}
+      \kern2pt\hrule\relax% \@fs@post for \@fs@ruled
+    \end{center}
+  \end{spacing}
+}
+\makeatother
+
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,shapes.geometric,arrows.meta,fit}
+
+\makeatletter
+\newenvironment{tikzautomata}
+{% \begin{tikzautomata}
+  \begin{center}
+    \begin{tikzpicture}[
+      on grid,auto,thick,node distance=1cm and 1.75cm,
+      >={Stealth[round]},initial text=,accepting/.style={double distance=2pt,outer sep=1pt},
+      every state/.style={inner sep=0pt, minimum size=0.75cm},
+      proc/.style={circle,draw},
+      envel/.style={shape=ellipse,draw,semithick,inner xsep=-9pt}]
+  }{% \end{tikzautomata}
+    \end{tikzpicture}
+  \end{center}
+}
+\makeatother
+
+\usepackage{fontspec}
+\usepackage{bold-extra}
+\setsansfont[BoldFont=NanumBarunGothic]{NanumBarunGothicLight}
+\setmainfont[AutoFakeSlant,BoldFont=NanumMyeongjoBold]{NanumMyeongjo}
+
+\usepackage[hangul]{kotex}
+
+\addtokomafont{labelinglabel}{\bfseries}
+\addtokomafont{title}{\bfseries}
+
+\setkomafont{disposition}{\normalfont}
+\setkomafont{section}{\LARGE\bfseries\sffamily}
+\setkomafont{subsection}{\Large\bfseries\sffamily}
+\setkomafont{subsubsection}{\large\bfseries\sffamily}
+
+\usepackage{indentfirst}
+
+\title{\vspace{-0.5in}Automata HW1}
+\author{\vspace{-15pt}2022-28022 정누리}
+\date{\vspace{-5pt}\today}
+
+%++++++++++++++++++++++++++++++++++++++++
+
+\begin{document}
+
+\maketitle
+
+\end{document}
