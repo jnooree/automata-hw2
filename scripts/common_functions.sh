@@ -34,8 +34,25 @@ function run_tests() {
 	SHELL="$(type -p bash)"
 	export SHELL
 	export -f with_timeout
+
+	echo >&2 "Running $1..."
+	parallel -j"$(nproc)" --bar \
+		with_timeout "bin/$1" '<{}' ">{.}.${4}" ::: "$2"/*."${3}"
 }
 
 function check_results() {
-	true
+	local total=0 ok=0 nok=0
+
+	for out in "$1"/*.o; do
+		total=$((total + 1))
+		if diff -B "$out" "${out%.o}.a" &>/dev/null; then
+			ok=$((ok + 1))
+		else
+			nok=$((nok + 1))
+			failure "$out"
+		fi
+	done
+
+	echo >&2 "run: $ok/$total tests passed."
+	return "$nok"
 }
