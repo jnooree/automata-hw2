@@ -10,9 +10,11 @@
 
 \usepackage{textcomp}
 \usepackage{booktabs}
-\usepackage[mathrm=sym]{unicode-math}
+\usepackage{mathtools}
+\usepackage{nccmath}
 \usepackage{subcaption}
 \captionsetup[table]{skip=0pt}
+\numberwithin{equation}{section}
 \numberwithin{figure}{section}
 \numberwithin{table}{section}
 
@@ -37,7 +39,8 @@
 \colorlet{methodcolor}{MidnightBlue}
 
 \usepackage{tcolorbox}
-\tcbuselibrary{listings}
+\usepackage{seqsplit}
+\tcbuselibrary{listings,skins,breakable}
 
 \makeatletter
 \lstdefinestyle{mystyle}{
@@ -57,16 +60,20 @@
 
 \lstset{style=mystyle}
 \lstset{escapeinside={(*@}{@*)}}
-\newtcblisting{codebox}{
-  listing only, listing style=mystyle, colback=black!3!white,
+\newtcolorbox{codebox}{
+  enhanced, breakable, colback=black!3!white,
   before skip balanced=\medskipamount, after skip balanced=\medskipamount,
-  boxrule=0.3mm, left=5pt, right=5pt, top=0pt, bottom=0pt
+  boxrule=0.3mm, left=5pt, right=5pt, top=5pt, bottom=5pt, fontupper=\ttfamily\raggedright
 }
 
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \algnewcommand{\lIf}[2]{% \lIf{<if>}{<then>}
   \State \algorithmicif\ #1\ \algorithmicthen\ #2}
+\algnewcommand{\algorithmicor}{\textbf{or }}
+\algnewcommand{\Or}{\algorithmicor}
+\algnewcommand{\algorithmicbreak}{\textbf{break}}
+\algnewcommand{\Break}{\algorithmicbreak}
 
 \makeatletter
 \@addtoreset{algorithm}{section}% algorithm counter resets every chapter
@@ -104,11 +111,13 @@
 {% \begin{tikzautomata}
   \begin{center}
     \begin{tikzpicture}[
-      on grid,auto,thick,node distance=1cm and 1.75cm,
-      >={Stealth[round]},initial text=,accepting/.style={double distance=2pt,outer sep=1pt},
-      every state/.style={inner sep=0pt, minimum size=0.75cm},
+      on grid,auto,thick,>={Stealth[round]},initial text=,
+      every state/.style={inner sep=0pt, minimum size=0.75cm, node distance=1.75cm and 2.5cm, font=\normalsize},
+      accepting/.style={double distance=2pt,outer sep=1pt},
       proc/.style={circle,draw},
-      envel/.style={shape=ellipse,draw,semithick,inner xsep=-9pt}]
+      rloop/.style={in=330,out=30,looseness=5},
+      lloop/.style={in=210,out=150,looseness=5},
+      ]
   }{% \end{tikzautomata}
     \end{tikzpicture}
   \end{center}
@@ -117,7 +126,8 @@
 
 \usepackage{fontspec}
 \usepackage{bold-extra}
-\setsansfont[BoldFont=NanumBarunGothic]{NanumBarunGothicLight}
+\setmonofont[AutoFakeSlant=0.2,Scale=0.97]{D2Coding}
+\setsansfont[BoldFont=NanumBarunGothic,Scale=0.97]{NanumBarunGothicLight}
 \setmainfont[AutoFakeSlant,BoldFont=NanumMyeongjoBold]{NanumMyeongjo}
 
 \usepackage[hangul]{kotex}
@@ -132,7 +142,12 @@
 
 \usepackage{indentfirst}
 
-\title{\vspace{-0.5in}Automata HW1}
+\newcommand{\gen}{\Rightarrow}
+\newcommand{\stargen}{\overset{*}{\gen}}
+\newcommand{\sq}{\textquotesingle}
+\newcommand{\dq}{\textquotedbl}
+
+\title{\vspace{-0.5in}Automata HW2}
 \author{\vspace{-15pt}2022-28022 정누리}
 \date{\vspace{-5pt}\today}
 
@@ -141,5 +156,293 @@
 \begin{document}
 
 \maketitle
+
+\section{Introduction}
+
+이 프로젝트는 제한된 mathematical expression을 parsing하는 \hyperref[subsec:ll1]{$LL(1)$ parser}를 구현한다. 모든 실행 코드는 C++로 작성되었으며, 컴파일에는 cmake를 사용하였다.
+
+프로젝트의 대부분은 \lstinline{DPA} class로 구현되어 있다. 해당 class의 구현은 \lstinline{automata.hpp}에서, 이 프로젝트에서 사용한 parser의 grammar 및 lexing과 관련된 context는 \lstinline{main_run.cpp}에서 확인 가능하다.
+
+\section{Implementation}
+
+시작하기 전에, 편의를 위해 모든 identifier를 \texttt{id}로 표현하겠다. 따라서, $\texttt{id} \in \{ a, b, c, d, x, y, z, 2, 3, 4, 5, 6, 7, 8, 9 \}$이다. 또한, end-of-string token은 $\#$로 표기하겠다.
+
+\subsection{Grammar}
+
+문제에서 주어진 문법은 \ref{grammar:orig}\와 같다.
+\begin{equation}\label{grammar:orig}
+  \begin{aligned}
+    E & \to E+T\ |\ E-T\ |\ T \\
+    T & \to T*F\ |\ T/F\ |\ F \\
+    F & \to (E)\ |\ A         \\
+    A & \to \texttt{id}
+  \end{aligned}
+\end{equation}
+
+이제 주어진 문법~\ref{grammar:orig}\을 \textbf{교재 3.9}의 방식으로 $LL(1)$ parser에 적합하도록 변환하자.
+
+\begin{enumerate}
+  \item $A \to Ax$를 없앤다.
+        \begin{equation}\label{grammar:mod}
+          \begin{aligned}
+            E  & \to TE'                        \\
+            E' & \to +TE'\ |\ -TE'\ |\ \epsilon \\
+            T  & \to FT'                        \\
+            T' & \to *FT'\ |\ /FT'\ |\ \epsilon \\
+            F  & \to (E)\ |\ A                  \\
+            A  & \to \texttt{id}
+          \end{aligned}
+        \end{equation}
+  \item 생성규칙의 우변이 같은 string으로 시작하지 않도록 고친다.
+
+        앞서 구현한 문법~\ref{grammar:mod}\은 동일한 string으로 시작하는 것이 하나도 없으므로 이를 그대로 사용한다.
+\end{enumerate}
+
+이후 사용하는 모든 문법은 문법~\ref{grammar:mod}\을 사용하도록 하겠다. 이를 $G$라 하자.
+
+\subsection{Parse Table}
+\label{subsec:parsetable}
+
+이제 \textbf{교재 3.9}의 방식을 사용하여 $G$에 해당하는 parse table을 만들자. 여기에서 $x, y, z \in (V \cup \Sigma)^*$이다.
+
+\begin{enumerate}
+  \begin{fleqn}
+    \item \texttt{id}에 대해 생각해 보자.
+    \begin{itemize}
+      \item $E \to TE'$에서 시작하여
+            \begin{equation*}
+              \begin{aligned}
+                E & \gen TE'          \\
+                  & \gen FT'x         \\
+                  & \gen Ay           \\
+                  & \gen \texttt{id}z
+              \end{aligned}
+            \end{equation*}
+    \end{itemize}
+
+    \item $+$, $-$에 대해 생각해 보자. 이때 두 연산자를 \texttt{pm}이라 하면
+    \begin{itemize}
+      \item $E' \gen \texttt{pm}TE'$에서 시작하여 $E' \gen \texttt{pm}TE'$이다.
+      \item $E \to TE'$과 $T \gen FT' \gen \epsilon$으로부터, $T'$ 다음에 \texttt{pm}이 올 수 있다.
+    \end{itemize}
+
+    \item $*$, $/$에 대해 생각해 보자. 이때 두 연산자를 \texttt{md}라 하면
+    \begin{itemize}
+      \item $T' \gen \texttt{md}FT'$에서 시작하여 $T' \gen \texttt{md}FT'$이다.
+    \end{itemize}
+
+    \item $($에 대해 생각해 보자.
+    \begin{itemize}
+      \item $E \to TE'$에서 시작하여
+            \begin{equation*}
+              \begin{aligned}
+                E & \gen TE'  \\
+                  & \gen FT'x \\
+                  & \gen (E)y
+              \end{aligned}
+            \end{equation*}
+    \end{itemize}
+
+    \item $)$에 대해 생각해 보자.
+    \begin{itemize}
+      \item $F \gen (E) \gen (TE') \gen (FT'E')$이고, $E' \stargen \epsilon$, $T' \stargen \epsilon$이다.
+    \end{itemize}
+
+    \item $\#$에 대해 생각해 보자.
+    \begin{itemize}
+      \item $E \Rightarrow TE' \Rightarrow FT'E'$이고, $E' \stargen \epsilon$, $T' \stargen \epsilon$이다.
+    \end{itemize}
+  \end{fleqn}
+\end{enumerate}
+
+따라서 전체 parse table은 표~\ref{tbl:parse}\와 같다.
+\begin{table}[H]
+  \centering
+  \caption{Parse table of $G$}\label{tbl:parse}
+  \begin{tabular}{ c c c c c c c c }
+    \toprule
+         & \texttt{id}         & \texttt{pm}             & \texttt{md}             & $($         & $)$               & $\#$              \\
+    \midrule
+    $E$  & $E \to TE'$         &                         &                         & $E \to TE'$ &                   &                   \\
+    $E'$ &                     & $E' \to \texttt{pm}TE'$ &                         &             & $E' \to \epsilon$ & $E' \to \epsilon$ \\
+    $T$  & $T \to FT'$         &                         &                         & $T \to FT'$ &                   &                   \\
+    $T'$ &                     & $T' \to \epsilon$       & $T' \to \texttt{md}FT'$ &             & $T' \to \epsilon$ & $T' \to \epsilon$ \\
+    $F$  & $F \to A$           &                         &                         & $F \to (E)$ &                   &                   \\
+    $A$  & $A \to \texttt{id}$ &                         &                         &             &                   &                   \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\pagebreak
+
+\subsection{Deterministic Pushdown Automata}
+\label{subsec:dpa}
+
+이제 표~\ref{tbl:parse}\로부터 DPA를 만들면 그림~\ref{fig:dpa}\와 같다. 이때 스택의 바닥은 $\#$이다.
+
+\begin{figure}[H]
+  \begin{small}
+    \singlespacing
+    \begin{tikzautomata}
+      \node[state, initial](0) {$p$};
+
+      \node[state, ellipse, minimum width=2.5em, minimum height=35ex](1)[right=of 0] {$q_0$};
+
+      \node[state](4)[right=of 1] {$q_3$};
+      \node[state](3)[right=of 1,above=of 4] {$q_2$};
+      \node[state](2)[right=of 1,above=of 3] {$q_1$};
+      \node[state](5)[right=of 1,below=of 4] {$q_4$};
+      \node[state](6)[right=of 1,below=of 5] {$q_5$};
+      \node[state](7)[below=of 0] {$q_6$};
+
+      \node[state, accepting](8)[below=of 7] {$r$};
+
+      % \begin{noindent}
+      \path[->] (0) edge node {$\epsilon, \#/E\#$} (1)
+                (1.85)  edge[bend left=10] node[above left, inner ysep=-2pt] {$\texttt{id}, \epsilon/\epsilon$} (2)
+                (2)     edge[bend left=10] node[below right, inner ysep=-2pt] {$\epsilon, \texttt{id}/\epsilon$} (1.84)
+                (2)     edge[rloop] node[right, align=left] {$\epsilon, E/TE'$ \\ $\epsilon, T/FT'$ \\ $\epsilon, F/A$ \\ $\epsilon, A/\texttt{id}$} (2)
+                (1.75)  edge[bend left=10] node[above] {$\texttt{pm}, \epsilon/\epsilon$} (3)
+                (3)     edge[bend left=10] node[below] {$\epsilon, \texttt{pm}/\epsilon$} (1.74)
+                (3)     edge[rloop] node[right, align=left] {$\epsilon, E'/\texttt{pm}TE'$ \\ $\epsilon, T'/\epsilon$} (3)
+                (1)     edge[bend left=10] node[above] {$\texttt{md}, \epsilon/\epsilon$} (4)
+                (4)     edge[bend left=10] node[below] {$\epsilon, \texttt{md}/\epsilon$} (1)
+                (4)     edge[rloop] node[right, align=left] {$\epsilon, T'/\texttt{md}FT'$} (4)
+                (1.286) edge[bend left=10] node[above] {$(, \epsilon/\epsilon$} (5)
+                (5)     edge[bend left=10] node[below] {$\epsilon, (/\epsilon$} (1.285)
+                (5)     edge[rloop] node[right, align=left] {$\epsilon, E/TE'$ \\ $\epsilon, T/FT'$ \\ $\epsilon, F/(E)$} (5)
+                (1.276) edge[bend left=10] node[above right, inner ysep=-1pt] {$), \epsilon/\epsilon$} (6)
+                (6)     edge[bend left=10] node[below left, inner ysep=-2pt] {$\epsilon, )/\epsilon$} (1.275)
+                (6)     edge[rloop] node[right, align=left] {$\epsilon, E'/\epsilon$ \\ $\epsilon, T'/\epsilon$} (6)
+                (1.255) edge node[above] {$\#, \epsilon/\epsilon$} (7)
+                (7)     edge[lloop] node[left, align=left] {$\epsilon, E'/\epsilon$ \\ $\epsilon, T'/\epsilon$} (7)
+                (7.south) edge node[right] {$\epsilon, \#/\#$} (8)
+                ;
+      % \end{noindent}
+    \end{tikzautomata}
+  \end{small}
+  \caption{$G$를 accept하는 DPA} \label{fig:dpa}
+\end{figure}
+
+\subsection{$LL(1)$ Parsing Algorithm}
+\label{subsec:ll1}
+
+그림~\ref{fig:dpa}에 나타난 DPA에서, $p$와 $r$은 실제 구현에서는 고려할 필요가 없다. 직접 state로 구현하는 대신, 각각 다음과 같이 대체 가능하다.
+\begin{itemize}
+  \item $p$: 시작할 때 스택에 $E$를 넣고 $q_0$에서 시작한다.
+  \item $r$: 끝날 때 state가 $q_6$이고 스택이 비어있는지 확인한다.
+\end{itemize}
+따라서 이 구현에서는 $Q = \{q_i\}$만을 상태의 집합으로 사용하고, $q_0 = q_0$, $F = \{q_6\}$로 둔다.
+
+또한 이 알고리즘에서 사용할 DPA의 나머지 변수는 다음과 같이 정의한다.
+\begin{itemize}
+  \item $\Sigma = \{\texttt{id}, \texttt{pm}, \texttt{md}, (, ), \#\}$
+  \item $\Gamma = \Sigma \cup \{E, E', T, T', F, A\} - \{\#\}$
+  \item 전이관계 $\delta$는 \ref{subsec:dpa}에서 정의한 DPA에서 $p \to q_0$, $q_6 \to r$ 전이를 제외한 나머지이다.
+\end{itemize}
+편의상 $\delta$의 정의역은 $\delta_X$로 표기한다. 또한, input string $s$는 마지막에 end-of-string token($\#$)이 포함되었다고 가정한다\footnote{실제 구현에서는 null-terminated가 보장된 C++ \lstinline{std::string::c_str()}를 이용하였으며, 따라서 \lstinline{'\\0'}을 $\#$로 사용하였다.}.
+
+그러면 이 DPA는 오직 $q_0$에서만 string을 한 글자씩 읽어 다른 state로 stack transition 없이 transition하고, 나머지 state에서는 string 참조 없이 transition하므로 전체 parsing은 알고리즘~\ref{algo:parse}\로 구현할 수 있다\footnote{실제 구현에서는 몇몇 최적화 기법이 사용되었으나, 전체적인 알고리즘은 동일하다.}. 이 알고리즘에서 $q'$은 $q' \notin Q$인 singleton state로, 더이상 진행할 수 없음을 나타낸다. 또한, string literal은 \texttt{고정폭으로 나타내었다}.
+
+% \begin{noindent}
+\begin{breakablealgorithm}
+  \caption{$LL(1)$ parsing of $G$}\label{algo:parse}
+  \begin{algorithmic}[1]
+    \Function{DPA::parse}{$s$}
+      \State $S \coloneqq$ The stack of DPA
+      \State $T \coloneqq$ The stack trace of $S$
+      \State $t \coloneqq$ Parsed portion of string
+      \State Push $E$ into $S$
+      \State $T \gets [\texttt{\dq E\dq}]$
+      \State $t \gets \texttt{\dq\dq}$
+      \State $q \gets q_0$
+      \For{$\textbf{each}\ a\ \textbf{in}\ s$}
+        \State $q \gets$ \Call{string\_transition}{$q$, $a$}
+        \lIf{$q \notin Q$}{\Return $[\texttt{\dq reject\dq}]$}
+        \State $q \gets$ \Call{stack\_transition}{$q$, $a$, $S$, $T$, $t$}
+      \EndFor
+      \lIf{$S \ne \emptyset$ \Or $q \notin F$}{\Return $[\texttt{\dq reject\dq}]$}
+      \State \Return $T$
+    \EndFunction
+    \Statex
+    \Function{DPA::string\_transition}{$q$, $a$}
+      \If{$(q, a, \epsilon) \notin \delta_X$}
+        \State $q \gets$ next state by $\delta(q, a, \epsilon)$
+        \State \Return $q$
+      \Else
+        \State \Return $q'$\Comment{$q' \notin Q$}
+      \EndIf
+    \EndFunction
+    \Statex
+    \Function{DPA::stack\_transition}{$q$, $a$, $S$, $T$, $t$}
+      \While{$S \ne \emptyset$}
+        \State $A \gets$ top of $S$
+        \lIf{$(q, \epsilon, A) \notin \delta_X$}{\Break}
+        \State Modify $S$ by $\delta(q, \epsilon, A)$
+        \State $q \gets$ next state by $\delta(q, \epsilon, A)$
+        \If{$A \in \Sigma$}
+          \State $t \gets$ \Call{concat}{$t$, $A$}
+          \State \Break
+        \EndIf
+        \State $u \gets$ \Call{join}{$S$}
+        \State Append \Call{concat}{$t$, $u$} to $T$
+      \EndWhile
+      \State \Return $q$
+    \EndFunction
+  \end{algorithmic}
+\end{breakablealgorithm}
+% \end{noindent}
+
+이때 그림~\ref{fig:dpa}\로부터 stack transition의 개수는 $s$의 길이 $n$에 대해 $\mathcal{O}(1)$이므로, 알고리즘~\ref{algo:parse}의 시간 복잡도는 $\mathcal{O}(n)$이 된다.
+
+\section{Test}
+
+\subsection{Automated Tests}
+
+지난번과 동일하게, 수작업으로 임의의 expression을 일일히 $LL(1)$ derivation을 수행하는 것은 시간도 오래 걸리고 틀릴 가능성도 높다. 따라서, $G$로부터 랜덤하게 $LL(1)$ derivation을 수행하여 임의의 expression을 생성하는 프로그램을 Python으로 작성하였다. 이제 이 프로그램의 stack trace를 정답으로, 프로그램이 생성한 expression을 input으로 사용하면 알고리즘~\ref{algo:parse}\가 올바른 input에 대해 잘 작동하는지 확인할 수 있다.
+
+알고리즘~\ref{algo:parse}\가 틀린 input을 올바르게 reject하는지를 확인하기 위해서는, 동일한 프로그램이 생성한 expression으로부터 임의의 한 문자를 제거한 negative example을 생성하여 input으로 사용하였다. 이는 $G$가 만드는 언어 $L$의 특성상 $s \in L$인 모든 $s$에 대하여 $s$에서 임의의 글자가 하나 제거된 $s'$는 $s' \notin L$임을 이용한 것이다. 또한, $s'$은 한 글자만 추가하면 $s$가 되므로, 알고리즘~\ref{algo:parse}\가 가장 reject하기 어려운 input이기도 하다.
+
+positive와 negative example 각각 100개씩 생성하여 테스트하였다.
+
+\subsection{Manual Tests}
+
+문제에서 제공한 예시 입출력에 해당하는 테스트 케이스도 추가하였다.
+
+\section{Benchmark}
+
+프로그램이 실제로 충분히 빠른지를 확인하기 위해, 다음 \lstinline{3181B} 길이의 expression을 사용하였다. 이것 역시 앞서 만든 프로그램으로부터 랜덤하게 생성하였다. Negative example에 대한 테스트는 동일 expression에서 마지막 글자를 제거하고 진행하였다.
+
+\begin{codebox}
+  \seqsplit{4/((2+(((8*8*5/(c+6/8-9)-x*z*(a+3-7+((2)+d+c*2)/(c*2*c*(5))-3/b/(z))-2*2)*7*9/6-((b/b-(c/2+y*c/(5-2+8)/(x-(6+((((6*5/(d))/(z/b+(6+2+((4-7*(c*(z/(7*2/d*(x)*((a*a/z)))/z*b/y+3*4)/y+(b/(d*9/b-3-y*y/2*4*x+3+c/(((y/y))/(c*a))/y*x))/(2)-(9-5/b*5*((d/8)+((4/2-6/4-(2-9-(3*7)/3-x/b)*7-((d+a/x+(a*c)-(3)+5-(7*6+x*4*(2/3)-((b/4-((c)+a-8)*8-((2-d*4))*(b)*(8*b+z*x+8+7)-z-x/c*(((a/(c+b/(9-(d*7)+(d-(c/a/c-((6)))/d/(4-6-5/b/5)-(b*c/y+y+d)/((3/(9-d)/3/((d*(d-(8/c))/4/(7)+5*((c)/(d)*4/y/7)))*5*4)*((a+2-2-(y-(2+8/(((6/b+(2))))/a/(d/4-(6/a/(b/8/((2/7*b)*((y-c)))-z-5)/(8+c-b))/6/(c*b*z*4)/y)/(8+b*3-7)))-(a))+(y+4+6+2))*d*6)*(7)*5*3-7/3/d/y))/a)/((((d)*(2/((d*9/2)+d/(a+5+9/8)+a)*(z-6*x-a/z-((2)+y*((a/(x*(((x-2*3-x+z*7+6+a-z*b))/d+c-d/6/(6*5)-d))*(6*y-d/2)-z)*7/(d/(((b-(2*d/7)/7/6)+(x*8))-4-d))-4/2)+2))/((b*8)/(5*4+b*a/(9-9/(5/(d/b-c*2/(7/(8-2/9*5*(z*6-7/(9)+2*(z))*9*5*a+b-8-2*3)/6)/((a))*9)/(((b)/(a/((y/4)*b)-6+6/z)/(8/d+(x/(6/2*9*d*(4)*5+((d/(((b-z+((5/((a*a/(x/y*(y+(((5*8/(y)*6*d-(8*z/2/(3/9)+(3/a*6/6*7/((5))*(5+2))+((z)/x/7-(7+4/d/(7*((x/d/((8/8))*6))*(((5))*9/d/4)+b-(b*b*b/9/3))-b/2)-(3*2-((5))*(8+c))+(((c/2+((x*2/((d-(z/z*5)-z+5-(3/b)/7/7/a+a*5*5/4*(((x/x)*(d-b-4*y)/((a*6*b+(x*z/x/7)*3)))*(c*9)-(5)*(8/2*(c/(z+y)/(3-(x)/b*(3*(z)*b/c*x)*((z-7)*(7*(y-((y/z/3+((8*c/((a-5*(3+4*(9/((7)*(7)/7*((7*y*z/a*6))*(3/b-4/3*a*a-(x*c))+b+c*7*z-x+d*d))))))/x/c-y*7)/a)+(a+5/6*2/3)-x*7)*b*(y+7/(y)-((((8/(3*(5*9/4-(y*3*7*x-(((((3/d+(c/((5/4)/((b)+b+z*z/(6+c)*2*5)*3/(2+c+3*((c)-((3*(6*(2)*7*d)/c*8))/z-5*(6*a-d/6/5+2)/7*((9*z+(y/b/9-((a-a))*9+9*9))*c-y*9*5+4)*5*(a)*6*d-7*d*(2-c))-a)*(3+c/(d*(3+a*(2)/7/8+5/x/y/(3))/(5/8)/8-y/5*7/d)*7*x/((z*6+a+2)-9)-b)-y/4/b)+z*z*3/4+3)/9/(b/((8*z)*(a)*2/((c/4))*2)+c+7*(8-7/8-a*(b)+y*(((y-3-b*4/(b/d/b*(6*4+(9*((y*6-9*5*((x)+3/2))*y-z*(2*3/7+8*9+2-9))*(8)*b*c/2*3*c))+(b/((z*b/(9/((2)/6)/3))*(5)*6/z*a/(3*x+7*c*a/x*((y/x/(3+(x*(z/8/((6-2+6/c*2))/7)/z))/a)-z-(((z)/((((((((((b/z*(((2*(5/z/b*6)*x+y*z*(3)*b)/y/y)/d/2))/x)*y/c/3/(b*(x/7/(((c+8*(b)/(((3)*7)))*4*(z)+((5/x)/6*7*c*c/(2*c)*(y+(((a/9/6*2-z+(9*8*(x)/y+9/3*8*7)/5+d-7/x*a*9)+d*6)+b+b*2*(x*3*y/a*c*b*5-y)+7)-(9)*9*(z)))/(z*(2-((7*d))+(3))*((6)/y*y*x))*d/9/9*5+(((((d)-b+6/(4*7)*2+4))+7/6*((4*5/3/(5/z)+(a/(6))/(c/((4*6/y)-y)*c*c)-(b+b+(z))*3+y/2)+(((6*9/a)*z*9*c*a*((b+d)/x*(9))*c)*4)*a*((8/6))*5/(((y))*z/(a*6+(7*((8+(6-2)-(2+c/(((2*y*x-(z-b*4/a)*z/z*4-c/3*y*2-(6+(b*d+5)*5/2+8/3+c/d)/(9/(y/(2/3/((((d-x*8*(6)*2+(8/9/x)/(x-2-a/((((8+(z)*(7))*b)))*(6)/5+y/((z)-b*4/4-(3/a-(2-b*(d*(9+(x-(((3*((9/8/b-2-b/4/2/d/(b-(a/c-3-9/c-7/(9-8/c)*3*3))+d-(4+x*6*9*5*(8*b))*8/9)/a))/((z+4))*7*2/((((z/(6/(2/(9/9)-(x)))*(9-(9)*5*b/(3-a/8*d/(d+x-8/5*4*7/(x/((5+((4))+a)-d)+b))*c*(z/5))/6/(8/z)+(((c/d-((8+6)/c-8/(7*b*x*2)-2*8)*9))/(6))/6*((5*2/d/(6/2*6)/(z/3)/(4+d*3*((6-(5-b+x)+x/9*(x*(8*(3-c*c/(2*5*(3/(d*d+(4-b*d*z*(6/7-y-((4-((a/(2/8*c+((4/3/8*((7-y+5-8*5+7-8*5-6/d/(b/(7/9)/(((b/z/7/(z)*7))-5*(6))*(5)*(3*8-(((z*b-7/c/z/3/2*((d+5-d)*6-6/y)/(z/4/c*(((((2*7)/2*((((b*c/8-(9/6/(a-(2)*d)/9-3*d*z*((7/x+d))/c+x+7/z/((8)*c*((9-(z*5*3)*x)/6+4)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))}
+\end{codebox}
+
+그 결과는 다음과 같다\footnote{벤치마크는 Ubuntu 20.04 LTS, Dual Intel\textsuperscript{\tiny\textregistered} Xeon\textsuperscript{\tiny\textregistered} Silver 4214R CPU @ 2.40GHz 플랫폼에서 진행되었으며, 시간은 \href{https://tratt.net/laurie/src/multitime/}{\texttt{multitime}} 유틸리티로 측정하였다.}. $\mathcal{O}(n)$ 알고리즘인 만큼 매우 빠르게 실행되는 것을 확인할 수 있다.
+\begin{table}[H]
+  \centering
+  \caption{result of DPA (positive example)}
+  \begin{tabular}{ c c c c c c }
+    \toprule
+    $(N=7)$ & Mean  & Stdev & Min   & Median & Max   \\
+    \midrule
+    real    & 0.043 & 0.001 & 0.042 & 0.043  & 0.044 \\
+    user    & 0.029 & 0.007 & 0.019 & 0.031  & 0.036 \\
+    sys     & 0.014 & 0.007 & 0.008 & 0.012  & 0.024 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\begin{table}[H]
+  \centering
+  \caption{result of DPA (negative example)}
+  \begin{tabular}{ c c c c c c }
+    \toprule
+    $(N=7)$ & Mean  & Stdev & Min   & Median & Max   \\
+    \midrule
+    real    & 0.039 & 0.002 & 0.035 & 0.040  & 0.041 \\
+    user    & 0.025 & 0.009 & 0.015 & 0.023  & 0.040 \\
+    sys     & 0.014 & 0.008 & 0.000 & 0.016  & 0.024 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \end{document}
