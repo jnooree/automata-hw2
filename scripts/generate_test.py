@@ -70,32 +70,38 @@ class TopdownGenerator:
             self.stack.push(v)
         return terminal
 
-    def _E(self):
+    @staticmethod
+    def _E():
         return "", ["T", "E'"]
 
-    def _Ep(self):
+    @staticmethod
+    def _Ep():
         stack_choices = [["T", "E'"], []]
         term_choices = ["+", "-"]
         stack_next = random.choice(stack_choices)
         terminal = random.choice(term_choices) if stack_next else ""
         return terminal, stack_next
 
-    def _T(self):
+    @staticmethod
+    def _T():
         return "", ["F", "T'"]
 
-    def _Tp(self):
+    @staticmethod
+    def _Tp():
         stack_choices = [["F", "T'"], []]
         term_choices = ["*", "/"]
         stack_next = random.choice(stack_choices)
         terminal = random.choice(term_choices) if stack_next else ""
         return terminal, stack_next
 
-    def _F(self):
+    @staticmethod
+    def _F():
         stack_choices: list[tuple] = [("(", ["E", ")"]), ("", ["A"])]
         ret, = random.choices(stack_choices, weights=[1, 5])
         return ret
 
-    def _A(self):
+    @staticmethod
+    def _A():
         choices = ["a", "b", "c", "d", "x", "y", "z",
                    "2", "3", "4", "5", "6", "7", "8", "9"]
         return random.choice(choices), []
