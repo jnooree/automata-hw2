@@ -4,7 +4,7 @@
 
 ## Introduction
 
-2022 Fall semester Automata Theory HW2: Topdown Parsing
+2022 Fall semester Automata Theory HW2: LL(1) Parser
 
 ## Codecov
 
