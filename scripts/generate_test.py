@@ -169,10 +169,7 @@ def main():
     out_dir = Path(sys.argv[1])
     out_dir.mkdir(parents=True)
 
-    if len(sys.argv) > 2:
-        total = int(sys.argv[2])
-    else:
-        total = 1000
+    total = 100
 
     def write_examples(i, expr, stacktrace):
         prefix = f"{i:03d}"

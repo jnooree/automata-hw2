@@ -3,7 +3,7 @@
 prefix='Automata_HW2_2022-28022'
 
 rm -rf test/generated
-scripts/generate_test.py "test/generated" 100
+scripts/generate_test.py "test/generated"
 
 mv test/generated .
 rm -rf test
