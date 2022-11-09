@@ -176,8 +176,11 @@ int DPA<Lexer>::stack_transition(int state, const char a,
     if (!table_.contains(state))
       break;
 
-    stack.pop();
     const StackTransition &trs = table_[state];
+    if (!trs.hasnext(top))
+      break;
+
+    stack.pop();
     const auto &entry = trs(top);
     state = entry.first;
 
