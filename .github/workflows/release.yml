@@ -35,7 +35,7 @@ jobs:
         with:
           root_file: doc/Automata_HW2_2022-28022_report.tex
           args: "-xelatex -synctex=1 -interaction=nonstopmode -file-line-error"
-          extra_system_packages: fonts-nanum fonts-nanum-extra
+          extra_system_packages: fonts-nanum fonts-nanum-extra fonts-naver-d2coding
 
       - name: Create zip archive
         run: .github/scripts/release.sh
