@@ -2,7 +2,6 @@
 #define AUTOMATA_HW2_AUTOMATA_HPP_
 
 #include <cassert>
-#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
