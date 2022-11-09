@@ -1,5 +1,4 @@
 /bin/
-/benchmark/
 
 # Common build directories
 .cache/
