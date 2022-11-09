@@ -36,14 +36,8 @@ class TopdownGenerator:
     def __init__(self) -> None:
         super().__init__()
         self.stack = Stack[str]()
-        self._dispatcher = defaultdict(lambda: self._terminal, {
-            "E": self._E,
-            "E'": self._Ep,
-            "T": self._T,
-            "T'": self._Tp,
-            "F": self._F,
-            "A": self._A,
-        })
+        self._dispatcher = defaultdict(
+            lambda: self._terminal, self._dispatch_variables)
 
     def on_begin(self):
         pass
@@ -69,6 +63,21 @@ class TopdownGenerator:
         for v in reversed(stack_next):
             self.stack.push(v)
         return terminal
+
+    def _terminal(self):
+        return self.stack.peek(), []
+
+    @classmethod
+    @property
+    def _dispatch_variables(cls):
+        return {
+            "E": cls._E,
+            "E'": cls._Ep,
+            "T": cls._T,
+            "T'": cls._Tp,
+            "F": cls._F,
+            "A": cls._A,
+        }
 
     @staticmethod
     def _E():
@@ -105,9 +114,6 @@ class TopdownGenerator:
         choices = ["a", "b", "c", "d", "x", "y", "z",
                    "2", "3", "4", "5", "6", "7", "8", "9"]
         return random.choice(choices), []
-
-    def _terminal(self):
-        return self.stack.peek(), []
 
 
 class TracingTopdownGenerator(TopdownGenerator):
