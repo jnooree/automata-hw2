@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <utility>
 
 #include "automata.hpp"
 
