@@ -133,7 +133,7 @@ class TracingTopdownGenerator(TopdownGenerator):
         return super().generate(), self.stacktrace
 
 
-def generate_positive(total: int = 100):
+def generate_positive(total: int):
     generator = TracingTopdownGenerator()
     examples = []
     while len(examples) < total:
@@ -147,7 +147,7 @@ def _remove_random(expr: str) -> str:
     return expr[:pos] + expr[pos + 1:]
 
 
-def generate_negative(total: int = 100):
+def generate_negative(total: int):
     generator = TopdownGenerator()
     examples = []
     while len(examples) < total:
@@ -160,6 +160,11 @@ def main():
     out_dir = Path(sys.argv[1])
     out_dir.mkdir(parents=True)
 
+    if len(sys.argv) > 2:
+        total = int(sys.argv[2])
+    else:
+        total = 1000
+
     def write_examples(i, expr, stacktrace):
         prefix = f"{i:03d}"
         inp = out_dir / f"{prefix}.q"
@@ -169,9 +174,9 @@ def main():
         out.write_text("\n=> ".join(stacktrace) + "\n")
 
     i = 0
-    for i, (expr, stacktrace) in enumerate(generate_positive()):
+    for i, (expr, stacktrace) in enumerate(generate_positive(total)):
         write_examples(i, expr, stacktrace)
-    for i, (expr, stacktrace) in enumerate(generate_negative(), i + 1):
+    for i, (expr, stacktrace) in enumerate(generate_negative(total), i + 1):
         write_examples(i, expr, stacktrace)
 
 
