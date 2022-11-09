@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import TypeVar, Generic, Iterator
 
 _T = TypeVar("_T")
+MAX = 3000
 
 
 class Stack(Generic[_T]):
@@ -36,14 +37,16 @@ class TopdownGenerator:
     def __init__(self) -> None:
         super().__init__()
         self.stack = Stack[str]()
+        self._done = False
         self._dispatcher = defaultdict(
             lambda: self._terminal, self._dispatch_variables)
 
     def on_begin(self):
-        pass
+        self._done = False
 
     def on_step(self, expr: str):
-        pass
+        if len(expr) >= MAX:
+            self._done = True
 
     def generate(self):
         self.stack.clear()
@@ -67,25 +70,26 @@ class TopdownGenerator:
     def _terminal(self):
         return self.stack.peek(), []
 
-    @classmethod
     @property
-    def _dispatch_variables(cls):
+    def _dispatch_variables(self):
         return {
-            "E": cls._E,
-            "E'": cls._Ep,
-            "T": cls._T,
-            "T'": cls._Tp,
-            "F": cls._F,
-            "A": cls._A,
+            "E": self._E,
+            "E'": self._Ep,
+            "T": self._T,
+            "T'": self._Tp,
+            "F": self._F,
+            "A": self._A,
         }
 
     @staticmethod
     def _E():
         return "", ["T", "E'"]
 
-    @staticmethod
-    def _Ep():
+    def _Ep(self):
         stack_choices = [["T", "E'"], []]
+        if self._done:
+            return "", stack_choices[-1]
+
         term_choices = ["+", "-"]
         stack_next = random.choice(stack_choices)
         terminal = random.choice(term_choices) if stack_next else ""
@@ -95,18 +99,21 @@ class TopdownGenerator:
     def _T():
         return "", ["F", "T'"]
 
-    @staticmethod
-    def _Tp():
+    def _Tp(self):
         stack_choices = [["F", "T'"], []]
+        if self._done:
+            return "", stack_choices[-1]
+
         term_choices = ["*", "/"]
         stack_next = random.choice(stack_choices)
         terminal = random.choice(term_choices) if stack_next else ""
         return terminal, stack_next
 
-    @staticmethod
-    def _F():
+    def _F(self):
         stack_choices: list[tuple] = [("(", ["E", ")"]), ("", ["A"])]
-        ret, = random.choices(stack_choices, weights=[1, 5])
+        if self._done:
+            return stack_choices[-1]
+        ret, = random.choices(stack_choices, weights=[1, 2])
         return ret
 
     @staticmethod
@@ -122,9 +129,11 @@ class TracingTopdownGenerator(TopdownGenerator):
         self.stacktrace = []
 
     def on_begin(self):
+        super().on_begin()
         self.stacktrace = ["".join(self.stack)]
 
     def on_step(self, expr: str):
+        super().on_step(expr)
         # Skip duplicate stacktrace
         if not self.stack or self.stack.peek() != ")":
             self.stacktrace.append(expr + "".join(self.stack))
@@ -142,7 +151,7 @@ def generate_positive(total: int):
     return examples[:total]
 
 
-def _remove_random(expr: str) -> str:
+def remove_random(expr: str) -> str:
     pos = random.randrange(len(expr))
     return expr[:pos] + expr[pos + 1:]
 
@@ -151,7 +160,7 @@ def generate_negative(total: int):
     generator = TopdownGenerator()
     examples = []
     while len(examples) < total:
-        examples += [(_remove_random(result), ["reject"]) for _ in range(total)
+        examples += [(remove_random(result), ["reject"]) for _ in range(total)
                      if len(result := generator.generate()) > 10]
     return examples[:total]
 
