@@ -145,8 +145,6 @@ std::vector<std::string> DPA<Lexer>::parse(const std::string &str) const {
     state = stack_transition(temp, a, stack, msg, parsed);
   }
 
-  // null character for end of string
-  state = stack_transition(state, '\0', stack, msg, parsed);
   if (!stack.empty() || state != end_state_)
     goto reject;
 
@@ -171,12 +169,12 @@ int DPA<Lexer>::stack_transition(int state, const char a,
                                  std::vector<std::string> &msg,
                                  std::string &parsed) const {
   while (!stack.empty()) {
-    const int A = stack.top();
     // Stop processing, move to the next character
     if (!table_.contains(state))
       break;
 
     const StackTransition &trs = table_[state];
+    const int A = stack.top();
     // Stop processing, move to the next character
     if (!trs.has_next(A))
       break;
