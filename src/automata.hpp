@@ -14,15 +14,15 @@ namespace detail {
   template <class VT>
   class TransitionImpl {
   private:
-    iterable_fixed_map<int, VT> table_;
+    fixed_map<int, VT> table_;
 
   public:
-    TransitionImpl(const iterable_fixed_map<int, VT> &table): table_(table) { }
+    TransitionImpl(const fixed_map<int, VT> &table): table_(table) { }
 
-    TransitionImpl(iterable_fixed_map<int, VT> &&table) noexcept
+    TransitionImpl(fixed_map<int, VT> &&table) noexcept
       : table_(std::move(table)) { }
 
-    bool hasnext(int key) const {
+    bool has_next(int key) const {
       return table_.contains(key);
     }
 
@@ -34,21 +34,21 @@ namespace detail {
 
 using StackTransition =
   detail::TransitionImpl<std::pair<int, std::vector<int>>>;
-using ParseTable = iterable_fixed_map<int, StackTransition>;
+using ParseTable = fixed_map<int, StackTransition>;
 
 using StringTransition = detail::TransitionImpl<int>;
 
 template <class T>
-class iterable_stack {
+class transparent_stack {
 private:
   std::vector<T> data_;
 
 public:
-  iterable_stack() = default;
+  transparent_stack() = default;
 
-  iterable_stack(const std::vector<T> &data): data_(data) { }
+  transparent_stack(const std::vector<T> &data): data_(data) { }
 
-  iterable_stack(std::vector<T> &&data) noexcept: data_(std::move(data)) { }
+  transparent_stack(std::vector<T> &&data) noexcept: data_(std::move(data)) { }
 
   bool empty() const {
     return data_.empty();
@@ -112,7 +112,7 @@ public:
 
 private:
   int string_transition(int state, char a) const;
-  int stack_transition(int state, char a, iterable_stack<int> &stack,
+  int stack_transition(int state, char a, transparent_stack<int> &stack,
                        std::vector<std::string> &msg,
                        std::string &parsed) const;
 
@@ -131,7 +131,7 @@ private:
 
 template <class Lexer>
 std::vector<std::string> DPA<Lexer>::parse(const std::string &str) const {
-  iterable_stack<int> stack({ toplevel_ });
+  transparent_stack<int> stack({ toplevel_ });
   std::vector<std::string> msg { getrepr(toplevel_) };
   std::string parsed;
 
@@ -163,29 +163,31 @@ int DPA<Lexer>::string_transition(const int state, const char a) const {
     return -1;
 
   const int tok = tokenize(a);
-  return str_trs_.hasnext(tok) ? str_trs_(tok) : -1;
+  return str_trs_.has_next(tok) ? str_trs_(tok) : -1;
 }
 
 template <class Lexer>
 int DPA<Lexer>::stack_transition(int state, const char a,
-                                 iterable_stack<int> &stack,
+                                 transparent_stack<int> &stack,
                                  std::vector<std::string> &msg,
                                  std::string &parsed) const {
   while (!stack.empty()) {
-    const int top = stack.top();
+    const int A = stack.top();
+    // Stop processing, move to the next character
     if (!table_.contains(state))
       break;
 
     const StackTransition &trs = table_[state];
-    if (!trs.hasnext(top))
+    // Stop processing, move to the next character
+    if (!trs.has_next(A))
       break;
 
     stack.pop();
-    const auto &entry = trs(top);
+    const auto &entry = trs(A);
     state = entry.first;
 
     // Already parsed, return
-    if (is_terminal(top)) {
+    if (is_terminal(A)) {
       parsed += a;
       break;
     }
@@ -197,6 +199,7 @@ int DPA<Lexer>::stack_transition(int state, const char a,
     for (auto e: stack)
       repr += getrepr(e, a);
   }
+
   return state;
 }
 } // namespace athw2

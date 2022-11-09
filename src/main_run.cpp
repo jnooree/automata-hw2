@@ -3,29 +3,42 @@
 
 #include "automata.hpp"
 
-namespace {
-enum State { kQ, kQId, kQPM, kQMD, kQLp, kQRp, kQEos };
-
-enum StringAlphabet { kId, kPM, kMD, kLp, kRp, kEos };
-
-enum StackAlphabet {
-  kStackId,
-  kStackPM,
-  kStackMD,
-  kStackLp,
-  kStackRp,
-  kStackEos,
-  kStackE,
-  kStackEp,
-  kStackT,
-  kStackTp,
-  kStackF,
-  kStackA,
-};
-} // namespace
-
 namespace athw2 {
 namespace {
+  enum State {
+    kQ,    /* 0 */
+    kQId,  /* 1 */
+    kQPM,  /* 2 */
+    kQMD,  /* 3 */
+    kQLp,  /* 4 */
+    kQRp,  /* 5 */
+    kQEos, /* 6 */
+  };
+
+  enum StringAlphabet {
+    kId,  /* 0 */
+    kPM,  /* 1 */
+    kMD,  /* 2 */
+    kLp,  /* 3 */
+    kRp,  /* 4 */
+    kEos, /* 5 */
+  };
+
+  enum StackAlphabet {
+    kStackId,  /* 0 */
+    kStackPM,  /* 1 */
+    kStackMD,  /* 2 */
+    kStackLp,  /* 3 */
+    kStackRp,  /* 4 */
+    kStackEos, /* 5 */
+    kStackE,   /* 6 */
+    kStackEp,  /* 7 */
+    kStackT,   /* 8 */
+    kStackTp,  /* 9 */
+    kStackF,   /* 10 */
+    kStackA,   /* 11 */
+  };
+
   constexpr int kStateCount = kQEos + 1, kStringAlphabetCount = kEos + 1,
                 kStackAlphabetCount = kStackA + 1;
 
@@ -139,7 +152,6 @@ namespace {
       }
     }
   };
-
   // NOLINTEND(clang-diagnostic-unused-member-function)
 
   void stacktrace(std::ostream &os, const std::vector<std::string> &msg) {
@@ -158,8 +170,8 @@ int main() {
   std::string input;
   std::cin >> input;
 
-  athw2::DPA<athw2::Lexer> dpa(athw2::build_str_trs(), athw2::build_table(), kQ,
-                               kQEos, kStackE);
+  athw2::DPA<athw2::Lexer> dpa(athw2::build_str_trs(), athw2::build_table(),
+                               athw2::kQ, athw2::kQEos, athw2::kStackE);
   const auto result = dpa.parse(input);
 
   athw2::stacktrace(std::cout, result);
