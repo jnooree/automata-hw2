@@ -40,12 +40,17 @@ jobs:
       - name: Create zip archive
         run: .github/scripts/release.sh
 
+      - name: Copy zip archive to temporary directory
+        run: |
+          mkdir -p /tmp/hw2
+          cp -t /tmp/hw2 *.zip
+
       - name: Test the archive
         uses: addnab/docker-run-action@v3
         with:
           image: jihoonjang2/automata:hw2
           shell: bash
-          options: -v ${{ github.workspace }}:/home/hw2/submissions
+          options: -v /tmp/hw2:/home/hw2/submissions
           run: |
             cd /home/hw2
             python3 grader.py | grep 40
