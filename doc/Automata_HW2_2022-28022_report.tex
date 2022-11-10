@@ -144,6 +144,7 @@
 
 \newcommand{\gen}{\Rightarrow}
 \newcommand{\stargen}{\overset{*}{\gen}}
+\newcommand{\starngen}{\overset{*}{\not\gen}}
 \newcommand{\sq}{\textquotesingle}
 \newcommand{\dq}{\textquotedbl}
 
@@ -203,59 +204,71 @@
 \subsection{Parse Table}
 \label{subsec:parsetable}
 
-이제 \textbf{교재 3.9}의 방식을 사용하여 $G$에 해당하는 parse table을 만들자. 여기에서 $x, y, z \in (V \cup \Sigma)^*$이다.
+이제 \textbf{교재 3.9}의 방식을 사용하여 $G$에 해당하는 parse table $M$을 만들자. 여기에서 $x, y, z \in (V \cup \Sigma)^*$이다.
 
 \begin{enumerate}
   \begin{fleqn}
     \item \texttt{id}에 대해 생각해 보자.
     \begin{itemize}
-      \item $E \to TE'$에서 시작하여
+      \item $E \to TE'$에서 시작하는 다음의 생성 경로가 유일하다.
             \begin{equation*}
               \begin{aligned}
-                E & \gen TE'          \\
-                  & \gen FT'x         \\
-                  & \gen Ay           \\
-                  & \gen \texttt{id}z
+                TE' & \gen FT'x         \\
+                    & \gen Ay           \\
+                    & \gen \texttt{id}z
               \end{aligned}
             \end{equation*}
+      \item 앞선 항에 의해, \texttt{id}는 $E$, $T$, $F$, $A$로부터 생성되며, 이들은 모두 처음, 또는 $\Sigma$ 다음에만 올 수 있는 변수이다. 따라서 \texttt{id} 앞에 올 수 있는 변수는 없다.
     \end{itemize}
 
     \item $+$, $-$에 대해 생각해 보자. 이때 두 연산자를 \texttt{pm}이라 하면
     \begin{itemize}
-      \item $E' \gen \texttt{pm}TE'$에서 시작하여 $E' \gen \texttt{pm}TE'$이다.
-      \item $E \to TE'$과 $T \gen FT' \gen \epsilon$으로부터, $T'$ 다음에 \texttt{pm}이 올 수 있다.
+      \item $E' \to \texttt{pm}TE'$: $\texttt{pm}TE' \stargen \texttt{pm}x$이다.
+      \item $T \to FT'$: $E \to TE'$과 $FT' \stargen x\epsilon$으로부터, $T'$ 다음에 \texttt{pm}이 올 수 있다.
     \end{itemize}
 
     \item $*$, $/$에 대해 생각해 보자. 이때 두 연산자를 \texttt{md}라 하면
     \begin{itemize}
-      \item $T' \gen \texttt{md}FT'$에서 시작하여 $T' \gen \texttt{md}FT'$이다.
+      \item $T' \to \texttt{md}FT'$: $\texttt{md}FT' \stargen \texttt{md}x$이다.
+      \item 앞선 항에 의해, \texttt{md}는 $T'$으로부터 생성된다. 이때 $T \to FT'$과 $T' \to \texttt{md}FT'$에 의해 $T'$ 앞에 올 수 있는 변수는 $F$뿐인데, $F \starngen \epsilon$이므로 \texttt{md} 앞에 올 수 있는 변수는 없다.
     \end{itemize}
 
     \item $($에 대해 생각해 보자.
     \begin{itemize}
-      \item $E \to TE'$에서 시작하여
+      \item $E \to TE'$에서 시작하는 다음의 생성 경로가 유일하다.
             \begin{equation*}
               \begin{aligned}
-                E & \gen TE'  \\
-                  & \gen FT'x \\
-                  & \gen (E)y
+                TE' & \gen FT'x \\
+                    & \gen (E)y
+              \end{aligned}
+            \end{equation*}
+      \item 앞선 항에 의해, $($는 $E$, $T$, $F$로부터 생성되며, 이들은 모두 처음, 또는 $\Sigma$ 다음에만 올 수 있는 변수이다. 따라서 $($ 앞에 올 수 있는 변수는 없다.
+    \end{itemize}
+
+    \item\label{pt:rp} $)$에 대해 생각해 보자. $)$의 생성 경로는 다음이 유일하다: $F \gen (E)$.
+    \begin{itemize}
+      \item 따라서 $)$를 첫번째 글자로 유도하는 $x$는 없다.
+      \item 다음 식에 의해, $)$ 전에 올 수 있는 변수는 $E'$과 $T'$뿐이다.
+            \begin{equation*}
+              \begin{aligned}
+                E  & \gen TE'           \\
+                   & \gen FT'E'         \\
+                E' & \stargen \epsilon  \\
+                T' & \stargen \epsilon  \\
+                F  & \starngen \epsilon
               \end{aligned}
             \end{equation*}
     \end{itemize}
 
-    \item $)$에 대해 생각해 보자.
-    \begin{itemize}
-      \item $F \gen (E) \gen (TE') \gen (FT'E')$이고, $E' \stargen \epsilon$, $T' \stargen \epsilon$이다.
-    \end{itemize}
-
     \item $\#$에 대해 생각해 보자.
     \begin{itemize}
-      \item $E \Rightarrow TE' \Rightarrow FT'E'$이고, $E' \stargen \epsilon$, $T' \stargen \epsilon$이다.
+      \item $\#$은 문장의 마지막에 존재하므로 $\#$를 첫번째 글자로 유도하는 $x$는 없다.
+      \item \ref{pt:rp}\와 동일하게 $\#$ 전에 올 수 있는 변수는 $E'$과 $T'$뿐이다.
     \end{itemize}
   \end{fleqn}
 \end{enumerate}
 
-따라서 전체 parse table은 표~\ref{tbl:parse}\와 같다.
+따라서 전체 parse table은 표~\ref{tbl:parse}\와 같다. 이를 $M$이라 하자.
 \begin{table}[H]
   \centering
   \caption{Parse table of $G$}\label{tbl:parse}
@@ -273,12 +286,10 @@
   \end{tabular}
 \end{table}
 
-\pagebreak
-
 \subsection{Deterministic Pushdown Automata}
 \label{subsec:dpa}
 
-이제 표~\ref{tbl:parse}\로부터 DPA를 만들면 그림~\ref{fig:dpa}\와 같다. 이때 스택의 바닥은 $\#$이다.
+이제 $M$으로부터 DPA를 만들면 그림~\ref{fig:dpa}\와 같다. 이때 스택의 바닥은 $\#$이다.
 
 \begin{figure}[H]
   \begin{small}
@@ -337,12 +348,12 @@
 또한 이 알고리즘에서 사용할 DPA의 나머지 변수는 다음과 같이 정의한다.
 \begin{itemize}
   \item $\Sigma = \{\texttt{id}, \texttt{pm}, \texttt{md}, (, ), \#\}$
-  \item $\Gamma = \Sigma \cup \{E, E', T, T', F, A\} - \{\#\}$
+  \item $\Gamma = \Sigma \cup \{E, E', T, T', F, A\}$
   \item 전이관계 $\delta$는 \ref{subsec:dpa}에서 정의한 DPA에서 $p \to q_0$, $q_6 \to r$ 전이를 제외한 나머지이다.
 \end{itemize}
 편의상 $\delta$의 정의역은 $\delta_X$로 표기한다. 또한, input string $s$는 마지막에 end-of-string token($\#$)이 포함되었다고 가정한다\footnote{실제 구현에서는 null-terminated가 보장된 C++ \lstinline{std::string::c_str()}를 이용하였으며, 따라서 \lstinline{'\\0'}을 $\#$로 사용하였다.}.
 
-그러면 이 DPA는 오직 $q_0$에서만 string을 한 글자씩 읽어 다른 state로 stack transition 없이 transition하고, 나머지 state에서는 string 참조 없이 transition하므로 전체 parsing은 알고리즘~\ref{algo:parse}\로 구현할 수 있다\footnote{실제 구현에서는 몇몇 최적화 기법이 사용되었으나, 전체적인 알고리즘은 동일하다.}. 이 알고리즘에서 $q'$은 $q' \notin Q$인 singleton state로, 더이상 진행할 수 없음을 나타낸다. 또한, string literal은 \texttt{고정폭으로 나타내었다}.
+그러면 이 DPA는 오직 $q_0$에서만 string을 한 글자씩 읽어 다른 state로 stack을 읽지 않고 전이하고, 나머지 state에서는 string을 읽지 않고 stack만을 읽고 전이하므로 전체 parsing은 알고리즘~\ref{algo:parse}\로 구현할 수 있다\footnote{실제 구현에서는 몇몇 최적화 기법이 사용되었으나, 전체적인 알고리즘은 동일하다.}. 이 알고리즘에서 $q'$은 $q' \notin Q$인 singleton state로, 더이상 진행할 수 없음을 나타낸다. 또한, string literal은 \texttt{고정폭으로 나타내었다}.
 
 % \begin{noindent}
 \begin{breakablealgorithm}
@@ -399,11 +410,11 @@
 
 \subsection{Automated Tests}
 
-지난번과 동일하게, 수작업으로 임의의 expression을 일일히 $LL(1)$ derivation을 수행하는 것은 시간도 오래 걸리고 틀릴 가능성도 높다. 따라서, $G$로부터 랜덤하게 $LL(1)$ derivation을 수행하여 임의의 expression을 생성하는 프로그램을 Python으로 작성하였다. 이제 이 프로그램의 stack trace를 정답으로, 프로그램이 생성한 expression을 input으로 사용하면 알고리즘~\ref{algo:parse}\가 올바른 input에 대해 잘 작동하는지 확인할 수 있다.
+지난번과 동일하게, 수작업으로 임의의 expression을 일일히 $LL(1)$ 유도하는 것은 시간도 오래 걸리고 틀릴 가능성도 높다. 따라서, $G$로부터 랜덤하게 $LL(1)$ 유도를 수행하여 임의의 expression을 생성하는 프로그램을 Python으로 작성하였다. 이제 이 프로그램의 stack trace를 정답으로, 프로그램이 생성한 expression을 input으로 사용하면 알고리즘~\ref{algo:parse}\가 올바른 input에 대해 잘 작동하는지 확인할 수 있다.
 
 알고리즘~\ref{algo:parse}\가 틀린 input을 올바르게 reject하는지를 확인하기 위해서는, 동일한 프로그램이 생성한 expression으로부터 임의의 한 문자를 제거한 negative example을 생성하여 input으로 사용하였다. 이는 $G$가 만드는 언어 $L$의 특성상 $s \in L$인 모든 $s$에 대하여 $s$에서 임의의 글자가 하나 제거된 $s'$는 $s' \notin L$임을 이용한 것이다. 또한, $s'$은 한 글자만 추가하면 $s$가 되므로, 알고리즘~\ref{algo:parse}\가 가장 reject하기 어려운 input이기도 하다.
 
-positive와 negative example을 각각 100개씩 생성하여 테스트하였다.
+Positive와 negative example은 각각 100개씩 생성하여 테스트하였다.
 
 \subsection{Manual Tests}
 
