@@ -35,7 +35,7 @@ jobs:
             scripts/compile.sh -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=ON
             .github/scripts/coverage.sh build
 
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.info
